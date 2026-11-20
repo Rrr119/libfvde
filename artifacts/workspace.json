@@ -1,0 +1,17 @@
+{
+  "root": "/home/dev/feedback/uid28710",
+  "B": "/home/dev/feedback/uid28710",
+  "sha": "40a880c89eaf75e0cc16c07842f50e30a5a0bdfa",
+  "wslDistro": "Ubuntu-26.04",
+  "source": {
+    "owner": "libyal",
+    "repo": "libfvde",
+    "sha": "40a880c89eaf75e0cc16c07842f50e30a5a0bdfa"
+  },
+  "fork": {
+    "owner": "Rrr119",
+    "repo": "libfvde",
+    "cloneUrl": "https://github.com/Rrr119/libfvde.git"
+  },
+  "at": "2026-11-20T03:35:31.199Z"
+}

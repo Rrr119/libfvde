@@ -17,7 +17,7 @@
 .Ar mount_point
 .Sh DESCRIPTION
 .Nm fvdemount
-is a utility to mount a Core Storage (CS) volume
+is a utility to mount a Core Storage (CS) volume read-only.
 .Pp
 .Nm fvdemount
 is part of the
@@ -42,9 +42,9 @@ specify the volume master key formatted in base16
 .It Fl o Ar offset
 specify the volume offset in bytes
 .It Fl p Ar password
-specify the password (or passphrase)
+specify the user password (or passphrase)
 .It Fl r Ar recovery_password
-specify the recovery password (or passphrase)
+specify the recovery key (or recovery password)
 .It Fl u
 unattended mode (disables user interaction)
 .It Fl v
@@ -61,6 +61,9 @@ None
 .Sh EXAMPLES
 .Bd -literal
 # fvdemount image1.raw /mnt/fvde
+fvdemount 20260705
+.sp
+# fvdemount -r AAAA-BBBB-CCCC-DDDD-EEEE-FFFF image1.raw /mnt/fvde
 fvdemount 20260705
 .sp
 .Ed

@@ -21,6 +21,7 @@
 
 #include <common.h>
 #include <file_stream.h>
+#include <memory.h>
 #include <types.h>
 
 #if defined( HAVE_STDLIB_H ) || defined( WINAPI )
@@ -768,6 +769,216 @@ on_error:
 	return( 0 );
 }
 
+/* Tests setting user and recovery passwords
+ * Returns 1 if successful or 0 if not
+ */
+int fvde_test_logical_volume_set_passwords(
+     void )
+{
+	uint16_t utf16_password[ 10 ]                              = {
+		'u', 't', 'f', '1', '6', '-', 'T', 'E', 'S', 'T' };
+	uint8_t utf8_password[ 9 ]                                 = {
+		'u', 's', 'e', 'r', '-', 'T', 'E', 'S', 'T' };
+	uint8_t utf8_recovery_password[ 13 ]                       = {
+		'r', 'e', 'c', 'o', 'v', 'e', 'r', 'y', '-', 'T', 'E', 'S', 'T' };
+
+	libcerror_error_t *error                                       = NULL;
+	libfvde_internal_logical_volume_t *internal_logical_volume     = NULL;
+	libfvde_io_handle_t *io_handle                                 = NULL;
+	libfvde_logical_volume_t *logical_volume                       = NULL;
+	libfvde_logical_volume_descriptor_t *logical_volume_descriptor = NULL;
+	int result                                                     = 0;
+
+	result = libfvde_io_handle_initialize(
+	          &io_handle,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = libfvde_logical_volume_descriptor_initialize(
+	          &logical_volume_descriptor,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = libfvde_logical_volume_initialize(
+	          &logical_volume,
+	          io_handle,
+	          NULL,
+	          logical_volume_descriptor,
+	          NULL,
+	          NULL,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	internal_logical_volume = (libfvde_internal_logical_volume_t *) logical_volume;
+
+	result = libfvde_logical_volume_set_utf8_password(
+	          logical_volume,
+	          utf8_password,
+	          sizeof( utf8_password ),
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NOT_NULL(
+	 "user password",
+	 internal_logical_volume->user_password );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "user password size",
+	 (int) internal_logical_volume->user_password_size,
+	 (int) sizeof( utf8_password ) + 1 );
+
+	result = memory_compare(
+	          internal_logical_volume->user_password,
+	          utf8_password,
+	          sizeof( utf8_password ) );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 0 );
+
+	result = libfvde_logical_volume_set_utf8_recovery_password(
+	          logical_volume,
+	          utf8_recovery_password,
+	          sizeof( utf8_recovery_password ),
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NOT_NULL(
+	 "recovery password",
+	 internal_logical_volume->recovery_password );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "recovery password size",
+	 (int) internal_logical_volume->recovery_password_size,
+	 (int) sizeof( utf8_recovery_password ) + 1 );
+
+	result = memory_compare(
+	          internal_logical_volume->recovery_password,
+	          utf8_recovery_password,
+	          sizeof( utf8_recovery_password ) );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 0 );
+
+	result = memory_compare(
+	          internal_logical_volume->user_password,
+	          utf8_password,
+	          sizeof( utf8_password ) );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 0 );
+
+	result = libfvde_logical_volume_set_utf16_password(
+	          logical_volume,
+	          utf16_password,
+	          10,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "user password size",
+	 (int) internal_logical_volume->user_password_size,
+	 11 );
+
+	result = memory_compare(
+	          internal_logical_volume->user_password,
+	          "utf16-TEST",
+	          10 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 0 );
+
+	result = libfvde_logical_volume_free(
+	          &logical_volume,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = libfvde_logical_volume_descriptor_free(
+	          &logical_volume_descriptor,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = libfvde_io_handle_free(
+	          &io_handle,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	return( 1 );
+
+on_error:
+	if( error != NULL )
+	{
+		libcerror_error_free(
+		 &error );
+	}
+	if( logical_volume != NULL )
+	{
+		libfvde_logical_volume_free(
+		 &logical_volume,
+		 NULL );
+	}
+	if( logical_volume_descriptor != NULL )
+	{
+		libfvde_logical_volume_descriptor_free(
+		 &logical_volume_descriptor,
+		 NULL );
+	}
+	if( io_handle != NULL )
+	{
+		libfvde_io_handle_free(
+		 &io_handle,
+		 NULL );
+	}
+	return( 0 );
+}
+
 #endif /* defined( __GNUC__ ) && !defined( LIBFVDE_DLL_IMPORT ) */
 
 
@@ -799,6 +1010,10 @@ int main(
 	 fvde_test_logical_volume_free );
 
 #if defined( __GNUC__ ) && !defined( LIBFVDE_DLL_IMPORT )
+
+	FVDE_TEST_RUN(
+	 "libfvde_logical_volume_set_passwords",
+	 fvde_test_logical_volume_set_passwords );
 
 	/* TODO: add tests for libfvde_internal_logical_volume_open_read */
 

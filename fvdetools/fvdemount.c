@@ -120,8 +120,8 @@ int main( int argc, char * const argv[] )
 		{ 'h', NULL, "shows this help" },
 		{ 'k', "key", "specify the volume master key formatted in base16" },
 		{ 'o', "offset", "specify the volume offset in bytes" },
-		{ 'p', "password", "specify the password (or passphrase)" },
-		{ 'r', "recovery_password", "specify the recovery password (or passphrase)" },
+		{ 'p', "password", "specify the user password (or passphrase)" },
+		{ 'r', "recovery_password", "specify the recovery key (or recovery password)" },
 		{ 'u', NULL, "unattended mode (disables user interaction)" },
 		{ 'v', NULL, "verbose output to stderr, while fvdemount will remain running in the foreground" },
 		{ 'V', NULL, "print version" },
@@ -475,25 +475,26 @@ int main( int argc, char * const argv[] )
 	}
 */
 #if defined( HAVE_LIBFUSE ) || defined( HAVE_LIBFUSE3 ) || defined( HAVE_LIBOSXFUSE )
+#if defined( HAVE_LIBFUSE3 )
+	/* fuse_opt_add_arg: Assertion `!args->argv || args->allocated' failed.
+	 */
+	fvdemount_fuse_arguments.argc = 0;
+	fvdemount_fuse_arguments.argv = NULL;
+#endif
+	/* This argument is required but ignored
+	 */
+	if( fuse_opt_add_arg(
+	     &fvdemount_fuse_arguments,
+	     "" ) != 0 )
+	{
+		fprintf(
+		 stderr,
+		 "Unable add fuse arguments.\n" );
+
+		goto on_error;
+	}
 	if( option_extended_options != NULL )
 	{
-#if defined( HAVE_LIBFUSE3 )
-		// fuse_opt_add_arg: Assertion `!args->argv || args->allocated' failed.
-		fvdemount_fuse_arguments.argc = 0;
-		fvdemount_fuse_arguments.argv = NULL;
-#endif
-		/* This argument is required but ignored
-		 */
-		if( fuse_opt_add_arg(
-		     &fvdemount_fuse_arguments,
-		     "" ) != 0 )
-		{
-			fprintf(
-			 stderr,
-			 "Unable add fuse arguments.\n" );
-
-			goto on_error;
-		}
 		if( fuse_opt_add_arg(
 		     &fvdemount_fuse_arguments,
 		     "-o" ) != 0 )
@@ -514,6 +515,29 @@ int main( int argc, char * const argv[] )
 
 			goto on_error;
 		}
+	}
+	/* FileVault volumes are only supported in read-only mode. Add this after
+	 * the extended options so that a caller cannot override it with "rw".
+	 */
+	if( fuse_opt_add_arg(
+	     &fvdemount_fuse_arguments,
+	     "-o" ) != 0 )
+	{
+		fprintf(
+		 stderr,
+		 "Unable add fuse arguments.\n" );
+
+		goto on_error;
+	}
+	if( fuse_opt_add_arg(
+	     &fvdemount_fuse_arguments,
+	     "ro" ) != 0 )
+	{
+		fprintf(
+		 stderr,
+		 "Unable add fuse arguments.\n" );
+
+		goto on_error;
 	}
 	if( memory_set(
 	     &fvdemount_fuse_operations,
@@ -657,6 +681,9 @@ int main( int argc, char * const argv[] )
 	fvdemount_dokan_options.Version    = DOKAN_VERSION;
 	fvdemount_dokan_options.MountPoint = mount_point;
 
+#if defined( DOKAN_OPTION_WRITE_PROTECT )
+	fvdemount_dokan_options.Options |= DOKAN_OPTION_WRITE_PROTECT;
+#endif
 #if DOKAN_MINIMUM_COMPATIBLE_VERSION >= 200
 	fvdemount_dokan_options.SingleThread = TRUE;
 #else

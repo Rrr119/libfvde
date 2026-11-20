@@ -6080,15 +6080,21 @@ int libfvde_encrypted_metadata_get_volume_master_key(
 	uint8_t volume_key_wrapped_kek[ 24 ];
 	uint8_t volume_master_key_wrapped_kek[ 24 ];
 
+	const uint8_t *passphrases[ 2 ];
 	uint8_t *kek_wrapped_volume_key    = NULL;
 	uint8_t *passphrase_wrapped_kek    = NULL;
 	static char *function              = "libfvde_encrypted_metadata_get_volume_master_key";
 	size_t kek_wrapped_volume_key_size = 0;
+	size_t salt_size                    = 0;
+	size_t passphrase_sizes[ 2 ];
 	size_t passphrase_wrapped_kek_size = 0;
 	uint32_t number_of_iterations      = 0;
 	uint32_t value_size                = 0;
 	uint32_t value_type                = 0;
 	int found_key                      = 0;
+	int number_of_passphrases          = 0;
+	int passphrase_index               = 0;
+	int passphrase_key_found           = 0;
 	int passphrase_wrapped_kek_index   = 0;
 	int result                         = 0;
 
@@ -6125,8 +6131,19 @@ int libfvde_encrypted_metadata_get_volume_master_key(
 
 		return( -1 );
 	}
-	if( ( user_password != NULL )
-	 || ( recovery_password != NULL ) )
+	if( user_password != NULL )
+	{
+		passphrases[ number_of_passphrases ]      = user_password;
+		passphrase_sizes[ number_of_passphrases ] = user_password_length;
+		number_of_passphrases++;
+	}
+	if( recovery_password != NULL )
+	{
+		passphrases[ number_of_passphrases ]      = recovery_password;
+		passphrase_sizes[ number_of_passphrases ] = recovery_password_length;
+		number_of_passphrases++;
+	}
+	if( number_of_passphrases > 0 )
 	{
 		do
 		{
@@ -6222,6 +6239,8 @@ int libfvde_encrypted_metadata_get_volume_master_key(
 
 				goto on_error;
 			}
+			salt_size = value_size;
+
 #if defined( HAVE_DEBUG_OUTPUT )
 			if( libcnotify_verbose != 0 )
 			{
@@ -6245,62 +6264,6 @@ int libfvde_encrypted_metadata_get_volume_master_key(
 				 "%s: number of iterations\t: %" PRIu32 "\n",
 				 function,
 				 number_of_iterations );
-			}
-#endif
-			if( user_password != NULL )
-			{
-				if( libfvde_password_pbkdf2(
-				     user_password,
-				     user_password_length,
-				     &( passphrase_wrapped_kek[ 8 ] ),
-				     value_size,
-				     number_of_iterations,
-				     passphrase_key,
-				     16,
-				     error ) == -1 )
-				{
-					libcerror_error_set(
-					 error,
-					 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-					 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
-					 "%s: unable to determine password key.",
-					 function );
-
-					goto on_error;
-				}
-			}
-			else if( recovery_password != NULL )
-			{
-				if( libfvde_password_pbkdf2(
-				     recovery_password,
-				     recovery_password_length,
-				     &( passphrase_wrapped_kek[ 8 ] ),
-				     value_size,
-				     number_of_iterations,
-				     passphrase_key,
-				     16,
-				     error ) == -1 )
-				{
-					libcerror_error_set(
-					 error,
-					 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-					 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
-					 "%s: unable to determine recovery password key.",
-					 function );
-
-					goto on_error;
-				}
-			}
-#if defined( HAVE_DEBUG_OUTPUT )
-			if( libcnotify_verbose != 0 )
-			{
-				libcnotify_printf(
-				 "%s: passphrase key:\n",
-				 function );
-				libcnotify_print_data(
-				 passphrase_key,
-				 16,
-				 0 );
 			}
 #endif
 			byte_stream_copy_to_uint32_little_endian(
@@ -6359,34 +6322,121 @@ int libfvde_encrypted_metadata_get_volume_master_key(
 				 0 );
 			}
 #endif
-			if( libfvde_encryption_aes_key_unwrap(
-			     passphrase_key,
-			     16 * 8,
-			     &( passphrase_wrapped_kek[ 32 ] ),
-			     value_size,
-			     volume_key_wrapped_kek,
-			     24,
-			     error ) == -1 )
+			for( passphrase_index = 0;
+			     passphrase_index < number_of_passphrases;
+			     passphrase_index++ )
 			{
-				libcerror_error_set(
-				 error,
-				 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-				 LIBCERROR_RUNTIME_ERROR_GENERIC,
-				 "%s: unable to retrieve volume key wrapped KEK.",
-				 function );
+				if( libfvde_password_pbkdf2(
+				     passphrases[ passphrase_index ],
+				     passphrase_sizes[ passphrase_index ],
+				     &( passphrase_wrapped_kek[ 8 ] ),
+				     salt_size,
+				     number_of_iterations,
+				     passphrase_key,
+				     16,
+				     error ) == -1 )
+				{
+					libcerror_error_set(
+					 error,
+					 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+					 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+					 "%s: unable to determine password key.",
+					 function );
 
-				goto on_error;
+					goto on_error;
+				}
+#if defined( HAVE_DEBUG_OUTPUT )
+				if( libcnotify_verbose != 0 )
+				{
+					libcnotify_printf(
+					 "%s: passphrase key: %d:\n",
+					 function,
+					 passphrase_index );
+					libcnotify_print_data(
+					 passphrase_key,
+					 16,
+					 0 );
+				}
+#endif
+				if( libfvde_encryption_aes_key_unwrap(
+				     passphrase_key,
+				     16 * 8,
+				     &( passphrase_wrapped_kek[ 32 ] ),
+				     value_size,
+				     volume_key_wrapped_kek,
+				     24,
+				     error ) == -1 )
+				{
+					libcerror_error_set(
+					 error,
+					 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+					 LIBCERROR_RUNTIME_ERROR_GENERIC,
+					 "%s: unable to retrieve volume key wrapped KEK.",
+					 function );
+
+					goto on_error;
+				}
+				if( memory_set(
+				     passphrase_key,
+				     0,
+				     16 ) == NULL )
+				{
+					libcerror_error_set(
+					 error,
+					 LIBCERROR_ERROR_DOMAIN_MEMORY,
+					 LIBCERROR_MEMORY_ERROR_SET_FAILED,
+					 "%s: unable to clear passphrase key.",
+					 function );
+
+					goto on_error;
+				}
+
+#if defined( HAVE_DEBUG_OUTPUT )
+				if( libcnotify_verbose != 0 )
+				{
+					libcnotify_printf(
+					 "%s: volume key wrapped KEK:\n",
+					 function );
+					libcnotify_print_data(
+					 volume_key_wrapped_kek,
+					 24,
+					 0 );
+				}
+#endif
+				if( memory_compare(
+				     volume_key_wrapped_kek,
+				     libfvde_encrypted_metadata_wrapped_kek_initialization_vector,
+				     8 ) == 0 )
+				{
+#if defined( HAVE_DEBUG_OUTPUT )
+					if( libcnotify_verbose != 0 )
+					{
+						libcnotify_printf(
+						 "%s: KEK wrapped volume key encryption key:\n",
+						 function );
+						libcnotify_print_data(
+						 &( volume_key_wrapped_kek[ 8 ] ),
+						 16,
+						 0 );
+					}
+#endif /* defined( HAVE_DEBUG_OUTPUT ) */
+
+					passphrase_key_found = 1;
+
+					break;
+				}
 			}
-			if( memory_set(
-			     passphrase_key,
-			     0,
-			     16 ) == NULL )
+			if( ( passphrase_key_found == 0 )
+			 && ( memory_set(
+			       volume_key_wrapped_kek,
+			       0,
+			       24 ) == NULL ) )
 			{
 				libcerror_error_set(
 				 error,
 				 LIBCERROR_ERROR_DOMAIN_MEMORY,
 				 LIBCERROR_MEMORY_ERROR_SET_FAILED,
-				 "%s: unable to clear passphrase key.",
+				 "%s: unable to clear volume key wrapped KEK.",
 				 function );
 
 				goto on_error;
@@ -6396,45 +6446,15 @@ int libfvde_encrypted_metadata_get_volume_master_key(
 
 			passphrase_wrapped_kek = NULL;
 
-#if defined( HAVE_DEBUG_OUTPUT )
-			if( libcnotify_verbose != 0 )
+			if( passphrase_key_found != 0 )
 			{
-				libcnotify_printf(
-				 "%s: volume key wrapped KEK:\n",
-				 function );
-				libcnotify_print_data(
-				 volume_key_wrapped_kek,
-				 24,
-				 0 );
-			}
-#endif
-	                if( memory_compare(
-			     volume_key_wrapped_kek,
-			     libfvde_encrypted_metadata_wrapped_kek_initialization_vector,
-			     8 ) == 0 )
-			{
-#if defined( HAVE_DEBUG_OUTPUT )
-				if( libcnotify_verbose != 0 )
-				{
-					libcnotify_printf(
-					 "%s: KEK wrapped volume key encryption key:\n",
-					 function );
-					libcnotify_print_data(
-					 &( volume_key_wrapped_kek[ 8 ] ),
-					 16,
-					 0 );
-				}
-#endif /* defined( HAVE_DEBUG_OUTPUT ) */
-
-				found_key = 1;
-
 				break;
 			}
 			passphrase_wrapped_kek_index++;
 		}
 		while( result != 0 );
 
-		if( found_key != 0 )
+		if( passphrase_key_found != 0 )
 		{
 			if( libfvde_encryption_context_plist_get_kek_wrapped_volume_key(
 			     encryption_context_plist,
@@ -6545,6 +6565,7 @@ int libfvde_encrypted_metadata_get_volume_master_key(
 
 					goto on_error;
 				}
+				found_key = 1;
 			}
 			if( memory_set(
 			     volume_master_key_wrapped_kek,
@@ -6562,6 +6583,21 @@ int libfvde_encrypted_metadata_get_volume_master_key(
 			}
 		}
 	}
+	memory_set(
+	 volume_master_key_wrapped_kek,
+	 0,
+	 24 );
+
+	memory_set(
+	 volume_key_wrapped_kek,
+	 0,
+	 24 );
+
+	memory_set(
+	 passphrase_key,
+	 0,
+	 16 );
+
 	return( found_key );
 
 on_error:

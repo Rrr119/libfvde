@@ -610,6 +610,24 @@ int fvde_test_volume_open(
 	libcerror_error_free(
 	 &error );
 
+	result = libfvde_volume_open(
+	          volume,
+	          narrow_source,
+	          LIBFVDE_OPEN_WRITE,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 -1 );
+
+	FVDE_TEST_ASSERT_IS_NOT_NULL(
+	 "error",
+	 error );
+
+	libcerror_error_free(
+	 &error );
+
 	/* Test open when already opened
 	 */
 	result = libfvde_volume_open(

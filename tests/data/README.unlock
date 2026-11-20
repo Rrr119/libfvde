@@ -1,0 +1,19 @@
+FileVault unlock test data
+==========================
+
+The encryption_context_plist.*.user_password, recovery_key and
+mixed_credentials files are deterministic encryption context fixtures used by
+fvde_test_encrypted_metadata. The matching .h files embed the same data for
+tests that cannot depend on the process working directory.
+
+Credentials:
+
+* User password: user-TEST
+* Recovery key: AAAA-BBBB-CCCC-DDDD-EEEE-FFFF
+* Volume master key: 000102030405060708090a0b0c0d0e0f
+
+Regenerate the fixtures with:
+
+  python3 tests/generate_unlock_test_data.py
+
+The generator requires the Python cryptography module.

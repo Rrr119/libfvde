@@ -511,7 +511,15 @@ test_tools: \
 
 EXTRA_DIST = \
 	$(check_SCRIPTS) \
+	data/README.unlock \
+	data/encryption_context_plist.mixed_credentials \
+	data/encryption_context_plist.mixed_credentials.h \
+	data/encryption_context_plist.recovery_key \
+	data/encryption_context_plist.recovery_key.h \
+	data/encryption_context_plist.user_password \
+	data/encryption_context_plist.user_password.h \
 	generate_test_inputs.sh \
+	generate_unlock_test_data.py \
 	package.m4 \
 	test_library.at \
 	test_macros.at \

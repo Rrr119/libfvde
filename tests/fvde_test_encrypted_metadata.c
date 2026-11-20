@@ -21,6 +21,7 @@
 
 #include <common.h>
 #include <file_stream.h>
+#include <memory.h>
 #include <types.h>
 
 #if defined( HAVE_STDLIB_H ) || defined( WINAPI )
@@ -35,8 +36,18 @@
 #include "fvde_test_unused.h"
 
 #include "../libfvde/libfvde_encrypted_metadata.h"
+#include "../libfvde/libfvde_encryption_context_plist.h"
 #include "../libfvde/libfvde_io_handle.h"
+#include "../libfvde/libfvde_keyring.h"
 #include "../libfvde/libfvde_logical_volume_descriptor.h"
+
+#include "data/encryption_context_plist.mixed_credentials.h"
+#include "data/encryption_context_plist.recovery_key.h"
+#include "data/encryption_context_plist.user_password.h"
+
+const uint8_t fvde_test_encrypted_metadata_volume_master_key[ 16 ] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
 uint8_t fvde_test_encrypted_metadata_block_data_0x0010[ 368 ] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55, 0xc7, 0xb0, 0xe0, 0xff, 0xff, 0xff, 0xff,
@@ -4311,6 +4322,348 @@ on_error:
 
 #endif /* defined( __GNUC__ ) && !defined( LIBFVDE_DLL_IMPORT ) */
 
+#if defined( __GNUC__ ) && !defined( LIBFVDE_DLL_IMPORT )
+
+/* Tests the libfvde_encrypted_metadata_get_volume_master_key function with an unlock fixture
+ * Returns 1 if successful or 0 if not
+ */
+int fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+     const uint8_t *data,
+     size_t data_size,
+     const uint8_t *user_password,
+     size_t user_password_length,
+     const uint8_t *recovery_password,
+     size_t recovery_password_length,
+     int expected_result )
+{
+	libcerror_error_t *error                                     = NULL;
+	libfvde_encrypted_metadata_t *encrypted_metadata             = NULL;
+	libfvde_encryption_context_plist_t *encryption_context_plist = NULL;
+	libfvde_keyring_t *keyring                                   = NULL;
+	int result                                                   = 0;
+
+	result = libfvde_encrypted_metadata_initialize(
+	          &encrypted_metadata,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NOT_NULL(
+	 "encrypted_metadata",
+	 encrypted_metadata );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	result = libfvde_encryption_context_plist_initialize(
+	          &encryption_context_plist,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NOT_NULL(
+	 "encryption_context_plist",
+	 encryption_context_plist );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	result = libfvde_encryption_context_plist_set_data(
+	          encryption_context_plist,
+	          data,
+	          data_size,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	result = libfvde_keyring_initialize(
+	          &keyring,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NOT_NULL(
+	 "keyring",
+	 keyring );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	result = libfvde_encrypted_metadata_get_volume_master_key(
+	          encrypted_metadata,
+	          encryption_context_plist,
+	          keyring,
+	          user_password,
+	          user_password_length,
+	          recovery_password,
+	          recovery_password_length,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 expected_result );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	if( expected_result == 1 )
+	{
+		result = memory_compare(
+		          keyring->volume_master_key,
+		          fvde_test_encrypted_metadata_volume_master_key,
+		          16 );
+
+		FVDE_TEST_ASSERT_EQUAL_INT(
+		 "result",
+		 result,
+		 0 );
+	}
+	result = libfvde_keyring_free(
+	          &keyring,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "keyring",
+	 keyring );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	result = libfvde_encryption_context_plist_free(
+	          &encryption_context_plist,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "encryption_context_plist",
+	 encryption_context_plist );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	result = libfvde_encrypted_metadata_free(
+	          &encrypted_metadata,
+	          &error );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "encrypted_metadata",
+	 encrypted_metadata );
+
+	FVDE_TEST_ASSERT_IS_NULL(
+	 "error",
+	 error );
+
+	return( 1 );
+
+on_error:
+	if( error != NULL )
+	{
+		libcerror_error_free(
+		 &error );
+	}
+	if( keyring != NULL )
+	{
+		libfvde_keyring_free(
+		 &keyring,
+		 NULL );
+	}
+	if( encryption_context_plist != NULL )
+	{
+		libfvde_encryption_context_plist_free(
+		 &encryption_context_plist,
+		 NULL );
+	}
+	if( encrypted_metadata != NULL )
+	{
+		libfvde_encrypted_metadata_free(
+		 &encrypted_metadata,
+		 NULL );
+	}
+	return( 0 );
+}
+
+/* Tests the libfvde_encrypted_metadata_get_volume_master_key function
+ * Returns 1 if successful or 0 if not
+ */
+int fvde_test_encrypted_metadata_get_volume_master_key(
+     void )
+{
+	const uint8_t recovery_key[]  = "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF";
+	const uint8_t user_password[] = "user-TEST";
+	const uint8_t wrong_value[]   = "wrong-TEST";
+	int result                    = 0;
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_user_password,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_USER_PASSWORD_SIZE,
+	          user_password,
+	          sizeof( user_password ) - 1,
+	          NULL,
+	          0,
+	          1 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_user_password,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_USER_PASSWORD_SIZE,
+	          wrong_value,
+	          sizeof( wrong_value ) - 1,
+	          NULL,
+	          0,
+	          0 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_recovery_key,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_RECOVERY_KEY_SIZE,
+	          NULL,
+	          0,
+	          recovery_key,
+	          sizeof( recovery_key ) - 1,
+	          1 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_mixed_credentials,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_MIXED_CREDENTIALS_SIZE,
+	          user_password,
+	          sizeof( user_password ) - 1,
+	          NULL,
+	          0,
+	          1 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_mixed_credentials,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_MIXED_CREDENTIALS_SIZE,
+	          NULL,
+	          0,
+	          recovery_key,
+	          sizeof( recovery_key ) - 1,
+	          1 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_mixed_credentials,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_MIXED_CREDENTIALS_SIZE,
+	          wrong_value,
+	          sizeof( wrong_value ) - 1,
+	          recovery_key,
+	          sizeof( recovery_key ) - 1,
+	          1 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_mixed_credentials,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_MIXED_CREDENTIALS_SIZE,
+	          user_password,
+	          sizeof( user_password ) - 1,
+	          wrong_value,
+	          sizeof( wrong_value ) - 1,
+	          1 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_mixed_credentials,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_MIXED_CREDENTIALS_SIZE,
+	          wrong_value,
+	          sizeof( wrong_value ) - 1,
+	          wrong_value,
+	          sizeof( wrong_value ) - 1,
+	          0 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	result = fvde_test_encrypted_metadata_get_volume_master_key_with_fixture(
+	          fvde_test_encryption_context_plist_mixed_credentials,
+	          FVDE_TEST_ENCRYPTION_CONTEXT_PLIST_MIXED_CREDENTIALS_SIZE,
+	          NULL,
+	          0,
+	          NULL,
+	          0,
+	          0 );
+
+	FVDE_TEST_ASSERT_EQUAL_INT(
+	 "result",
+	 result,
+	 1 );
+
+	return( 1 );
+
+on_error:
+	return( 0 );
+}
+
+#endif /* defined( __GNUC__ ) && !defined( LIBFVDE_DLL_IMPORT ) */
+
 /* The main program
  */
 #if defined( HAVE_WIDE_SYSTEM_CHARACTER )
@@ -4426,7 +4779,9 @@ int main(
 	 "libfvde_encrypted_metadata_read_from_file_io_handle",
 	 fvde_test_encrypted_metadata_read_from_file_io_handle );
 
-	/* TODO: add tests for libfvde_encrypted_metadata_get_volume_master_key */
+	FVDE_TEST_RUN(
+	 "libfvde_encrypted_metadata_get_volume_master_key",
+	 fvde_test_encrypted_metadata_get_volume_master_key );
 
 	/* TODO: add tests for libfvde_encrypted_metadata_get_number_of_logical_volume_descriptors */
 

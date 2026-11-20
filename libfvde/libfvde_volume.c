@@ -2442,7 +2442,7 @@ int libfvde_internal_volume_open_read(
 				}
 				if( internal_volume->legacy_recovery_password != NULL )
 				{
-					if( libfvde_logical_volume_set_utf8_password(
+					if( libfvde_logical_volume_set_utf8_recovery_password(
 					     internal_volume->legacy_logical_volume,
 					     internal_volume->legacy_recovery_password,
 					     internal_volume->legacy_recovery_password_size - 1,

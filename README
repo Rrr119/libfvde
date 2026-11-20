@@ -27,9 +27,21 @@ Supported encryption volume types:
 
 Supported protection methods:
 
-* password
-* recovery password
+* user password
+* recovery key (also referred to as recovery password)
 * VMK key data (as of 20121114 version)
+
+Offline unlock and read-only mounting:
+
+....
+fvdemount -p 'user password' disk.raw /mnt/fvde
+fvdemount -r 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF' disk.raw /mnt/fvde
+....
+
+The library and Python bindings keep the existing password and
+recovery-password APIs. Both credentials can be provided at the same time;
+the library will try the user password first and then the recovery key.
+Mounted volumes are always read-only.
 
 Unsupported Core Storage format features:
 
